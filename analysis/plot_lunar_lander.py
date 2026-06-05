@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import os
 
 def load_eval_data(env_type):
-    # Bulletproof absolute pathing to find the LunarLander logs
     file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), f"../logs/lunar_lander/{env_type}/evaluations.npz"))
     
     if not os.path.exists(file_path):
@@ -16,7 +15,7 @@ def load_eval_data(env_type):
     mean_rewards = np.mean(data['results'], axis=1)
     mean_lengths = np.mean(data['ep_lengths'], axis=1)
     
-    # In LunarLander, a score > 200 is generally considered a "solved" successful landing
+    
     success_rates = np.mean(data['results'] > 200, axis=1) * 100
     
     return timesteps, mean_rewards, mean_lengths, success_rates

@@ -1,5 +1,16 @@
+# Environments
 env/
-logs/
+venv/
+
+# Mac OS files
+.DS_Store
+
+# Python cache
 __pycache__/
 *.pyc
-.DS_Store
+
+# Saved Models (Optional, but good if they get too large)
+*.zip
+
+# Generated outputs
+logs/
