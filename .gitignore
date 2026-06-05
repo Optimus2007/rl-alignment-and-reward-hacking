@@ -10,7 +10,4 @@ __pycache__/
 *.pyc
 
 # Saved Models (Optional, but good if they get too large)
-*.zip
-
-# Generated outputs
-logs/
+logs/**/*.zip
