@@ -8,7 +8,7 @@ Additive visualization utility for the
 
 This script does NOT touch any of the original experiment code, reward
 functions, hyper-parameters, environments or committed evaluation data.
-It only *reads* the project's wrappers/training configuration and *adds*
+It only reads the project's wrappers/training configuration and adds
 new artifacts under ``logs/videos/``.
 
 For every trained agent it:
@@ -28,7 +28,7 @@ For every trained agent it:
 
 Run from the repository root::
 
-    python scripts/generate_visualizations.py
+    python visualizations/generate_visualizations.py
 
 Optional flags::
 
@@ -49,80 +49,57 @@ from typing import Callable, Optional
 
 import numpy as np
 
-# --- Repository imports -----------------------------------------------------
-# Make the repo root importable so we can reuse the *exact* wrappers the
-# experiments were trained with (we never modify them).
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-import gymnasium as gym  # noqa: E402
-from stable_baselines3 import PPO  # noqa: E402
-from stable_baselines3.common.callbacks import EvalCallback  # noqa: E402
-from stable_baselines3.common.monitor import Monitor  # noqa: E402
+import gymnasium as gym
+from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.monitor import Monitor
 
-from src.wrappers import (  # noqa: E402
+from src.wrappers import (
     PureSparseRewardWrapper,
     HeavilyShapedEnergyWrapper,
     HoverExploitWrapper,
 )
 
-import imageio.v2 as imageio  # noqa: E402
-from PIL import Image, ImageDraw, ImageFont  # noqa: E402
+import imageio.v2 as imageio
+from PIL import Image, ImageDraw, ImageFont
 
 
-# --- Output locations -------------------------------------------------------
 VIDEO_DIR = os.path.join(REPO_ROOT, "logs", "videos")
 MODEL_DIR = os.path.join(REPO_ROOT, "logs", "videos", "_models")
 
 
-# ---------------------------------------------------------------------------
-# Agent configuration.
-#
-# Each entry mirrors one experiment from the original training scripts:
-#   * MountainCar  -> experiments/train_mountain_car.py  (default/sparse/shaped)
-#   * LunarLander  -> experiments/train_lunar_lander.py  (hover_exploit)
-#
-# The training hyper-parameters below are copied verbatim from those scripts
-# so that a fresh checkpoint reproduces the original experimental setup.
-# ---------------------------------------------------------------------------
 @dataclass
 class AgentSpec:
-    key: str                       # output filename stem + model subdir
+    key: str
     env_id: str
-    reward_name: str               # human-readable reward-function label
-    behavior: str                  # short description of the learned behavior
-    wrapper: Optional[Callable] = None   # reward/step wrapper class (or None)
-    # Training config (exact copy of the originals):
+    reward_name: str
+    behavior: str
+    wrapper: Optional[Callable] = None
     total_timesteps: int = 500_000
     eval_freq: int = 10_000
     ppo_kwargs: dict = field(default_factory=dict)
-    # Where the *original* experiment would have saved best_model.zip
-    # (searched during checkpoint discovery, read-only):
     original_log_subdir: str = ""
-    # Proxy-reward reporter: returns the reward the agent actually optimized,
-    # for the reward-hacking commentary. Signature: (env, obs) -> float.
     proxy_reward: Optional[Callable] = None
 
 
 def _mc_ppo():
-    # From experiments/train_mountain_car.py
     return dict(verbose=0, ent_coef=0.01, learning_rate=0.001)
 
 
 def _sparse_proxy(env, obs) -> float:
-    # Mirrors PureSparseRewardWrapper.reward for *reporting only*.
     return 1.0 if env.unwrapped.state[0] >= 0.5 else 0.0
 
 
 def _shaped_proxy(env, obs) -> float:
-    # Mirrors HeavilyShapedEnergyWrapper.reward for *reporting only*.
     pos, vel = env.unwrapped.state[0], env.unwrapped.state[1]
     return (np.sin(3 * pos) + vel ** 2) * 10
 
 
 def _hover_proxy(env, obs) -> float:
-    # Mirrors HoverExploitWrapper.step for *reporting only*.
     if obs[6] == 1.0 or obs[7] == 1.0:
         return -100.0
     if obs[1] > 0:
@@ -195,16 +172,13 @@ AGENTS: dict[str, AgentSpec] = {
         wrapper=HoverExploitWrapper,
         total_timesteps=1_500_000,
         eval_freq=50_000,
-        ppo_kwargs=dict(verbose=0),  # From experiments/train_lunar_lander.py
+        ppo_kwargs=dict(verbose=0),
         original_log_subdir=os.path.join("logs", "lunar_lander", "hover_exploit"),
         proxy_reward=_hover_proxy,
     ),
 }
 
 
-# ---------------------------------------------------------------------------
-# Checkpoint discovery
-# ---------------------------------------------------------------------------
 def discover_checkpoint(spec: AgentSpec) -> Optional[str]:
     """Return the path to an existing checkpoint, or None if none exists.
 
@@ -224,17 +198,13 @@ def discover_checkpoint(spec: AgentSpec) -> Optional[str]:
     return None
 
 
-# ---------------------------------------------------------------------------
-# Training (only when no checkpoint exists) -- exact copy of original setup
-# ---------------------------------------------------------------------------
 def train_agent(spec: AgentSpec) -> str:
     """Train one agent with the original hyper-parameters into an isolated dir.
 
-    Reproduces experiments/train_*.py exactly:
-      env = Wrapper(Monitor(base_env, out_dir))   # Monitor logs TRUE reward
-      PPO trains on the wrapped (proxy) reward
-      EvalCallback saves best_model.zip on the unmodified env's true reward
-    Additionally saves final_model.zip (the fully-trained end-state policy).
+    Reproduces experiments/train_*.py exactly, PPO trains on the wrapped
+    (proxy) reward while Monitor logs the true reward, EvalCallback saves
+    best_model.zip on the unmodified env's true reward, and final_model.zip
+    (the fully-trained end-state policy) is saved as well.
     """
     out_dir = os.path.join(MODEL_DIR, spec.key)
     os.makedirs(out_dir, exist_ok=True)
@@ -272,9 +242,6 @@ def train_agent(spec: AgentSpec) -> str:
     return final_path
 
 
-# ---------------------------------------------------------------------------
-# Title card
-# ---------------------------------------------------------------------------
 def _load_font(size: int) -> ImageFont.FreeTypeFont:
     for candidate in [
         "/System/Library/Fonts/Supplemental/Arial.ttf",
@@ -340,11 +307,8 @@ def make_title_card(spec: AgentSpec, frame_shape, checkpoint: str) -> np.ndarray
     return np.asarray(img, dtype=np.uint8)
 
 
-# ---------------------------------------------------------------------------
-# Deterministic rollout
-# ---------------------------------------------------------------------------
 def run_rollout(spec: AgentSpec, checkpoint: str, seed: int):
-    """Run one deterministic episode on the *unmodified* env, capturing frames.
+    """Run one deterministic episode on the unmodified env, capturing frames.
 
     Reward is measured on the true (unwrapped) environment objective, which is
     the meaningful quantity for judging alignment vs. reward hacking. The proxy
@@ -380,9 +344,6 @@ def run_rollout(spec: AgentSpec, checkpoint: str, seed: int):
     }
 
 
-# ---------------------------------------------------------------------------
-# Encoding
-# ---------------------------------------------------------------------------
 def write_mp4(path, frames, fps=30):
     with imageio.get_writer(path, fps=fps, codec="libx264",
                             quality=8, macro_block_size=None) as writer:
@@ -405,9 +366,6 @@ def write_gif(path, frames, fps=20, max_width=360, subsample=2):
                     loop=0)
 
 
-# ---------------------------------------------------------------------------
-# Driver
-# ---------------------------------------------------------------------------
 def process_agent(spec: AgentSpec, args) -> Optional[dict]:
     print(f"\n=== {spec.key} ({spec.env_id}) ===")
     checkpoint = discover_checkpoint(spec)
@@ -437,9 +395,8 @@ def process_agent(spec: AgentSpec, args) -> Optional[dict]:
     print(f"    episode ended by  : {end}  "
           f"(terminated={roll['terminated']}, truncated={roll['truncated']})")
 
-    # Build final frame list: title card (held) + rollout frames.
     title = make_title_card(spec, roll["frames"][0].shape, checkpoint)
-    title_hold = int(args.fps * 2.5)  # ~2.5s
+    title_hold = int(args.fps * 2.5)
     all_frames = [title] * title_hold + roll["frames"]
 
     os.makedirs(VIDEO_DIR, exist_ok=True)
@@ -495,7 +452,7 @@ def main():
             r = process_agent(AGENTS[key], args)
             if r:
                 results.append(r)
-        except Exception as exc:  # keep going for remaining agents
+        except Exception as exc:
             print(f"    !! {key} failed: {exc}")
             import traceback
             traceback.print_exc()
