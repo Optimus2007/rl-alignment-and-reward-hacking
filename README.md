@@ -21,6 +21,26 @@ Using Proximal Policy Optimization (PPO), the project studies how continuous-sta
 
 ---
 
+## 🎥 Visualizations
+
+- **MountainCar – Reward Function 1** — [MP4](logs/videos/mountaincar_reward1.mp4)
+
+  ![MountainCar – Reward Function 1](logs/videos/mountaincar_reward1.gif)
+
+- **MountainCar – Reward Function 2** — [MP4](logs/videos/mountaincar_reward2.mp4)
+
+  ![MountainCar – Reward Function 2](logs/videos/mountaincar_reward2.gif)
+
+- **MountainCar – Reward Function 3** — [MP4](logs/videos/mountaincar_reward3.mp4)
+
+  ![MountainCar – Reward Function 3](logs/videos/mountaincar_reward3.gif)
+
+- **LunarLander – Hover Reward** — [MP4](logs/videos/lunar_hover.mp4)
+
+  ![LunarLander – Hover Reward](logs/videos/lunar_hover.gif)
+
+---
+
 ## Repository Structure
 
 ```text
