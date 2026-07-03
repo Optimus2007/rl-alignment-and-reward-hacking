@@ -51,9 +51,12 @@ rl_reward_research/
 ├── experiments/              # Training pipelines and callbacks
 │   ├── train_mountain_car.py
 │   └── train_lunar_lander.py
-├── logs/                     # Evaluation outputs and generated figures
+├── visualizations/           # Rollout rendering for the trained agents
+│   └── generate_visualizations.py
+├── logs/                     # Evaluation outputs, figures and demo videos
 │   ├── lunar_lander/
-│   └── mountain_car/
+│   ├── mountain_car/
+│   └── videos/               # MP4 + GIF demonstrations of each agent
 ├── report.pdf                # Full academic write-up and methodology
 ├── requirements.txt          # Python dependencies
 ├── src/                      # Source code for environment manipulation
